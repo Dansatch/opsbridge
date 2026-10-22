@@ -11,9 +11,10 @@ setup.
 
 ## Current build
 
-The repository starts with a deployable control-room shell. Each commit on `main`
-must remain buildable and shippable while the live simulation is added in small,
-reviewable steps.
+The current build runs a lightweight order simulation in the browser. Parcels move
+through all four workflow stages, update the activity feed and can be selected to
+follow their contents and destination. Each commit on `main` remains buildable and
+shippable while device events and recovery workflows are added in reviewable steps.
 
 ```sh
 pnpm install
