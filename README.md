@@ -16,6 +16,11 @@ through all four workflow stages, update the activity feed and can be selected t
 follow their contents and destination. Each commit on `main` remains buildable and
 shippable while device events and recovery workflows are added in reviewable steps.
 
+The shared `@opsbridge/domain` package owns the workflow, orders, device states,
+operational event contracts, incident model and deterministic simulation clock.
+The control-room UI renders that state rather than maintaining a separate version
+of the warehouse rules.
+
 ```sh
 pnpm install
 pnpm verify

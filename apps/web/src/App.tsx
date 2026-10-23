@@ -1,130 +1,39 @@
+import {
+  SIMULATION_TICK_MS,
+  WORKFLOW_STAGES,
+  advanceSimulation,
+  createInitialSimulation,
+  describeEvent,
+  getStageIndex,
+} from '@opsbridge/domain';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
-const stages = [
-  {
-    name: 'Receiving',
-    note: 'Ready for the next arrival',
-    device: 'RCV-SCN-01',
-  },
-  { name: 'Picking', note: 'Three orders on the move', device: 'PK-HHD-02' },
-  { name: 'Packing', note: 'Labels behaving themselves', device: 'PKG-PRN-01' },
-  { name: 'Dispatch', note: 'Bay 2 is loading', device: 'DSP-SCN-01' },
-] as const;
-
-type StageIndex = 0 | 1 | 2 | 3;
-type Order = {
-  id: string;
-  destination: string;
-  items: number;
-  colour: string;
-  stage: StageIndex;
-};
-
-type Activity = {
-  id: number;
-  message: string;
-  time: string;
-};
-
-const initialOrders: Order[] = [
-  {
-    id: 'OB-10429',
-    destination: 'Manchester',
-    items: 3,
-    colour: '#e7ae45',
-    stage: 0,
-  },
-  {
-    id: 'OB-10431',
-    destination: 'Bristol',
-    items: 1,
-    colour: '#8e78d7',
-    stage: 1,
-  },
-  {
-    id: 'OB-10434',
-    destination: 'Leeds',
-    items: 5,
-    colour: '#4eb6c2',
-    stage: 2,
-  },
-  {
-    id: 'OB-10436',
-    destination: 'Birmingham',
-    items: 2,
-    colour: '#e98262',
-    stage: 3,
-  },
-];
-
-const initialActivity: Activity[] = [
-  { id: 1, time: 'now', message: 'Order OB-10434 reached Packing' },
-  { id: 2, time: '−5s', message: 'RCV-SCN-01 checked in' },
-  { id: 3, time: '−12s', message: 'Label printed first time. Lovely.' },
-];
-
-function nextStage(stage: StageIndex): StageIndex {
-  return ((stage + 1) % stages.length) as StageIndex;
-}
-
-function movementMessage(order: Order, stage: StageIndex) {
-  if (order.stage === 3) {
-    return `${order.id} left Dispatch. Safe travels.`;
-  }
-
-  return `${order.id} reached ${stages[stage].name}`;
+function activityTime(index: number) {
+  if (index === 0) return 'now';
+  return `−${Math.round((SIMULATION_TICK_MS * index) / 1000)}s`;
 }
 
 export function App() {
-  const [orders, setOrders] = useState(initialOrders);
+  const [simulation, setSimulation] = useState(createInitialSimulation);
   const [selectedOrderId, setSelectedOrderId] = useState('OB-10431');
-  const [activity, setActivity] = useState(initialActivity);
-  const [dispatches, setDispatches] = useState(38);
 
   useEffect(() => {
-    let movement = 0;
     const timer = window.setInterval(() => {
-      setOrders((currentOrders) => {
-        const orderIndex = movement % currentOrders.length;
-        movement += 1;
-        const movingOrder = currentOrders[orderIndex];
-
-        if (!movingOrder) return currentOrders;
-
-        const stage = nextStage(movingOrder.stage);
-        const nextOrders = currentOrders.map((order, index) =>
-          index === orderIndex ? { ...order, stage } : order,
-        );
-
-        setActivity((currentActivity) =>
-          [
-            {
-              id: Date.now(),
-              time: 'now',
-              message: movementMessage(movingOrder, stage),
-            },
-            ...currentActivity.map((event, index) => ({
-              ...event,
-              time: index === 0 ? '−4s' : event.time,
-            })),
-          ].slice(0, 3),
-        );
-
-        if (movingOrder.stage === 3) {
-          setDispatches((count) => count + 1);
-        }
-
-        return nextOrders;
-      });
-    }, 3600);
+      setSimulation(advanceSimulation);
+    }, SIMULATION_TICK_MS);
 
     return () => window.clearInterval(timer);
   }, []);
 
   const selectedOrder = useMemo(
-    () => orders.find((order) => order.id === selectedOrderId) ?? orders[0],
-    [orders, selectedOrderId],
+    () =>
+      simulation.orders.find((order) => order.id === selectedOrderId) ??
+      simulation.orders[0],
+    [selectedOrderId, simulation.orders],
   );
+  const onlineDevices = simulation.devices.filter(
+    (device) => device.status === 'online',
+  ).length;
 
   return (
     <main className="app-shell">
@@ -149,15 +58,17 @@ export function App() {
 
       <section className="summary" aria-label="Operational summary">
         <div>
-          <strong>{dispatches}</strong>
+          <strong>{simulation.throughput.dispatchedOrders}</strong>
           <span>orders/hour</span>
         </div>
         <div>
-          <strong>8/8</strong>
+          <strong>
+            {onlineDevices}/{simulation.devices.length}
+          </strong>
           <span>devices online</span>
         </div>
         <div>
-          <strong>{orders.length}</strong>
+          <strong>{simulation.orders.length}</strong>
           <span>orders moving</span>
         </div>
         <p>Everything is moving nicely.</p>
@@ -176,28 +87,54 @@ export function App() {
 
         <div className="route" aria-label="Warehouse workflow">
           <div className="conveyor" aria-hidden="true" />
-          {orders.map((order) => (
-            <button
-              aria-label={`Follow ${order.id}, currently at ${stages[order.stage].name}`}
-              aria-pressed={selectedOrderId === order.id}
-              className={`parcel parcel-${order.stage} ${selectedOrderId === order.id ? 'selected' : ''}`}
-              key={order.id}
-              onClick={() => setSelectedOrderId(order.id)}
-              style={{ '--parcel-colour': order.colour } as CSSProperties}
-              type="button"
-            >
-              <span>{order.id}</span>
-            </button>
-          ))}
-          {stages.map((stage, index) => (
-            <article className="station" key={stage.name}>
-              <div className="station-index">0{index + 1}</div>
-              <span className="device-light" aria-label="Device healthy" />
-              <h2>{stage.name}</h2>
-              <p>{stage.note}</p>
-              <code>{stage.device}</code>
-            </article>
-          ))}
+          {simulation.orders.map((order, orderIndex) => {
+            const stage = WORKFLOW_STAGES.find(({ id }) => id === order.stage);
+            const stageIndex = getStageIndex(order.stage);
+            const ordersAtStage = simulation.orders.filter(
+              (candidate) => candidate.stage === order.stage,
+            );
+            const lane = simulation.orders
+              .slice(0, orderIndex)
+              .filter((candidate) => candidate.stage === order.stage).length;
+            const parcelOffset = (lane - (ordersAtStage.length - 1) / 2) * 54;
+
+            return (
+              <button
+                aria-label={`Follow ${order.id}, currently at ${stage?.name ?? order.stage}`}
+                aria-pressed={selectedOrderId === order.id}
+                className={`parcel parcel-${stageIndex} ${selectedOrderId === order.id ? 'selected' : ''}`}
+                key={order.id}
+                onClick={() => setSelectedOrderId(order.id)}
+                style={
+                  {
+                    '--parcel-colour': order.colour,
+                    '--parcel-offset': `${parcelOffset}px`,
+                  } as CSSProperties
+                }
+                type="button"
+              >
+                <span>{order.id}</span>
+              </button>
+            );
+          })}
+          {WORKFLOW_STAGES.map((stage, index) => {
+            const device = simulation.devices.find(
+              ({ id }) => id === stage.primaryDeviceId,
+            );
+
+            return (
+              <article className="station" key={stage.id}>
+                <div className="station-index">0{index + 1}</div>
+                <span
+                  className={`device-light ${device?.status ?? 'offline'}`}
+                  aria-label={`Device ${device?.status ?? 'offline'}`}
+                />
+                <h2>{stage.name}</h2>
+                <p>{stage.note}</p>
+                <code>{stage.primaryDeviceId}</code>
+              </article>
+            );
+          })}
         </div>
 
         {selectedOrder ? (
@@ -208,7 +145,10 @@ export function App() {
             </div>
             <div>
               <span>Now at</span>
-              <strong>{stages[selectedOrder.stage].name}</strong>
+              <strong>
+                {WORKFLOW_STAGES.find(({ id }) => id === selectedOrder.stage)
+                  ?.name ?? selectedOrder.stage}
+              </strong>
             </div>
             <div>
               <span>Inside</span>
@@ -230,9 +170,9 @@ export function App() {
         <div>
           <span className="pulse" /> Recent activity
         </div>
-        {activity.map((event) => (
+        {simulation.events.slice(0, 3).map((event, index) => (
           <p key={event.id}>
-            <time>{event.time}</time> {event.message}
+            <time>{activityTime(index)}</time> {describeEvent(event)}
           </p>
         ))}
       </footer>

@@ -8,6 +8,7 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
+    "@opsbridge/domain": "workspace:*",
     "@vitejs/plugin-react": "^5.1.2",
     "vite": "^7.3.0",
     "react": "^19.2.3",
