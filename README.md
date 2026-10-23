@@ -21,6 +21,10 @@ operational event contracts, incident model and deterministic simulation clock.
 The control-room UI renders that state rather than maintaining a separate version
 of the warehouse rules.
 
+Fastify now owns the running simulation and publishes snapshots through
+`/api/live`. The React client subscribes over WebSockets, reconnects automatically
+and uses `/api/simulation` as an HTTP snapshot fallback.
+
 ```sh
 pnpm install
 pnpm verify

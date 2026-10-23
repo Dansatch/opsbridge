@@ -117,6 +117,15 @@ export type SimulationState = {
   };
 };
 
+export type SimulationClientMessage = {
+  type: 'simulation.subscribe';
+};
+
+export type SimulationServerMessage = {
+  type: 'simulation.snapshot';
+  state: SimulationState;
+};
+
 const initialOrders: Order[] = [
   {
     id: 'OB-10429',

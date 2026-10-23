@@ -1,12 +1,11 @@
 import {
   SIMULATION_TICK_MS,
   WORKFLOW_STAGES,
-  advanceSimulation,
-  createInitialSimulation,
   describeEvent,
   getStageIndex,
 } from '@opsbridge/domain';
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
+import { useLiveSimulation } from './useLiveSimulation';
 
 function activityTime(index: number) {
   if (index === 0) return 'now';
@@ -14,16 +13,8 @@ function activityTime(index: number) {
 }
 
 export function App() {
-  const [simulation, setSimulation] = useState(createInitialSimulation);
+  const { connection, simulation } = useLiveSimulation();
   const [selectedOrderId, setSelectedOrderId] = useState('OB-10431');
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setSimulation(advanceSimulation);
-    }, SIMULATION_TICK_MS);
-
-    return () => window.clearInterval(timer);
-  }, []);
 
   const selectedOrder = useMemo(
     () =>
@@ -49,7 +40,8 @@ export function App() {
         </div>
 
         <div className="live-status">
-          <i /> Live demo
+          <i className={connection} />{' '}
+          {connection === 'live' ? 'Live from server' : 'Reconnecting'}
         </div>
         <button className="trouble-button" type="button">
           Cause some trouble
@@ -81,7 +73,8 @@ export function App() {
             <h1 id="floor-title">A warehouse with somewhere to be.</h1>
           </div>
           <p>
-            <span className="floor-status-dot" /> Simulation running
+            <span className="floor-status-dot" /> Server tick{' '}
+            {simulation.clock.tick}
           </p>
         </div>
 
