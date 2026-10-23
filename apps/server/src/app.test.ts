@@ -41,6 +41,29 @@ describe('OpsBridge server', () => {
     });
   });
 
+  it('remembers operational events in SQLite', async () => {
+    const simulation = new SimulationEngine();
+    const app = buildApp({ simulation, startSimulation: false });
+    apps.push(app);
+
+    simulation.advance();
+    simulation.advance();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/events?limit=2',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      total: 5,
+      events: [
+        { id: 'event-2-OB-10431', tick: 2, type: 'order.moved' },
+        { id: 'event-1-OB-10429', tick: 1, type: 'order.moved' },
+      ],
+    });
+  });
+
   it('streams snapshots when the server simulation advances', async () => {
     const simulation = new SimulationEngine();
     const app = buildApp({ simulation, startSimulation: false });

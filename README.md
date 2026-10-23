@@ -25,6 +25,10 @@ Fastify now owns the running simulation and publishes snapshots through
 `/api/live`. The React client subscribes over WebSockets, reconnects automatically
 and uses `/api/simulation` as an HTTP snapshot fallback.
 
+Operational events are written to SQLite as they happen and are available from
+`/api/events`. The store keeps transport and persistence concerns outside the
+simulation rules, and caps history requests at 100 records.
+
 ```sh
 pnpm install
 pnpm verify

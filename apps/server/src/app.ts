@@ -6,10 +6,12 @@ import type {
 } from '@opsbridge/domain';
 import Fastify from 'fastify';
 import { fileURLToPath } from 'node:url';
+import { OperationalEventStore } from './event-store.js';
 import { SimulationEngine } from './simulation.js';
 
 type AppOptions = {
   serveWeb?: boolean;
+  eventStore?: OperationalEventStore;
   simulation?: SimulationEngine;
   startSimulation?: boolean;
 };
@@ -26,7 +28,24 @@ function isSubscribeMessage(value: unknown): value is SimulationClientMessage {
 export function buildApp(options: AppOptions = {}) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
   const simulation = options.simulation ?? new SimulationEngine();
+  const eventStore =
+    options.eventStore ??
+    new OperationalEventStore(
+      process.env.NODE_ENV === 'test'
+        ? ':memory:'
+        : (process.env.SQLITE_PATH ?? 'data/opsbridge.db'),
+    );
   const shouldStartSimulation = options.startSimulation ?? true;
+  if (eventStore.count() === 0) {
+    eventStore.recordMany(simulation.getState().events);
+  }
+  let latestEventId = simulation.getState().events[0]?.id;
+  const stopPersisting = simulation.subscribe((state) => {
+    const latestEvent = state.events[0];
+    if (!latestEvent || latestEvent.id === latestEventId) return;
+    eventStore.record(latestEvent);
+    latestEventId = latestEvent.id;
+  });
 
   void app.register(fastifyWebsocket);
 
@@ -36,6 +55,8 @@ export function buildApp(options: AppOptions = {}) {
 
   app.addHook('onClose', async () => {
     simulation.stop();
+    stopPersisting();
+    eventStore.close();
   });
 
   app.get('/api/health', async () => ({
@@ -44,6 +65,19 @@ export function buildApp(options: AppOptions = {}) {
   }));
 
   app.get('/api/simulation', async () => simulation.getState());
+
+  app.get<{ Querystring: { limit?: string } }>(
+    '/api/events',
+    async (request) => {
+      const requestedLimit = Number(request.query.limit ?? 25);
+      const limit = Number.isFinite(requestedLimit) ? requestedLimit : 25;
+
+      return {
+        events: eventStore.recent(limit),
+        total: eventStore.count(),
+      };
+    },
+  );
 
   void app.register(async (liveApp) => {
     liveApp.get('/api/live', { websocket: true }, (socket) => {
