@@ -19,14 +19,20 @@ export class SimulationEngine {
   }
 
   advance() {
-    this.state = advanceSimulation(this.state);
-    this.listeners.forEach((listener) => listener(this.state));
-    return this.state;
+    return this.update(advanceSimulation);
   }
 
   subscribe(listener: SimulationListener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  private update(updateState: (state: SimulationState) => SimulationState) {
+    const nextState = updateState(this.state);
+    if (nextState === this.state) return this.state;
+    this.state = nextState;
+    this.listeners.forEach((listener) => listener(this.state));
+    return this.state;
   }
 
   start() {

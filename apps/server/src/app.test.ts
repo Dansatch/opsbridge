@@ -51,15 +51,17 @@ describe('OpsBridge server', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/api/events?limit=2',
+      url: '/api/events?limit=4',
     });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      total: 5,
+      total: 7,
       events: [
         { id: 'event-2-OB-10431', tick: 2, type: 'order.moved' },
+        { tick: 2, type: 'device.activity', deviceId: 'PK-SCN-03' },
         { id: 'event-1-OB-10429', tick: 1, type: 'order.moved' },
+        { tick: 1, type: 'device.activity', deviceId: 'RCV-CAM-01' },
       ],
     });
   });

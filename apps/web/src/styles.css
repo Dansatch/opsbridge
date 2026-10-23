@@ -219,9 +219,42 @@ button {
   color: #a9bacb;
   font-size: 14px;
 }
-.station code {
-  color: #7cf0c3;
-  font-size: 12px;
+.station-devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.station-devices button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid #345573;
+  border-radius: 7px;
+  color: #9fdcc5;
+  background: #0b1d2d;
+  font:
+    10px ui-monospace,
+    monospace;
+  cursor: pointer;
+}
+.station-devices button:hover,
+.station-devices button[aria-pressed='true'] {
+  border-color: #7cf0c3;
+  color: #d9fff0;
+  background: #143b3c;
+}
+.station-devices i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #55e5a0;
+}
+.station-devices i.degraded {
+  background: #f0b84f;
+}
+.station-devices i.offline {
+  background: #f45d59;
 }
 .device-light {
   position: absolute;
@@ -318,6 +351,26 @@ button {
 .order-focus p {
   color: #89a2ba;
   font-size: 12px;
+}
+.device-focus .health-online {
+  color: #7cf0c3;
+  text-transform: capitalize;
+}
+.device-focus .health-degraded {
+  color: #f0b84f;
+  text-transform: capitalize;
+}
+.device-focus .health-offline {
+  color: #ff8d88;
+  text-transform: capitalize;
+}
+.device-focus .device-event-list {
+  min-width: 0;
+}
+.device-event-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .order-focus strong {
   color: #eef5ff;

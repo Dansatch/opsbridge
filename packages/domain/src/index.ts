@@ -261,7 +261,6 @@ export function createInitialSimulation(): SimulationState {
     throughput: { dispatchedOrders: 38 },
   };
 }
-
 export function getStageIndex(stageId: WorkflowStageId) {
   return WORKFLOW_STAGES.findIndex((stage) => stage.id === stageId);
 }
@@ -310,6 +309,25 @@ export function advanceSimulation(state: SimulationState): SimulationState {
   const stage = WORKFLOW_STAGES.find(({ id }) => id === from);
   const deviceId = stage?.primaryDeviceId ?? 'OPS-SYS-01';
   const dispatched = from === 'dispatch';
+  const supportingDevice = {
+    receiving: {
+      id: 'RCV-CAM-01',
+      message: `RCV-CAM-01 captured ${movingOrder.id}. Looking sharp.`,
+    },
+    picking: {
+      id: 'PK-SCN-03',
+      message: `PK-SCN-03 verified ${movingOrder.id}. A beep in the right direction.`,
+    },
+    packing: {
+      id: 'PKG-CAM-02',
+      message: `PKG-CAM-02 checked ${movingOrder.id}. Packed with approval.`,
+    },
+    dispatch: {
+      id: 'DSP-HHD-01',
+      message: `DSP-HHD-01 assigned ${movingOrder.id} to Bay 2. Off it goes.`,
+    },
+  } satisfies Record<WorkflowStageId, { id: string; message: string }>;
+  const deviceActivity = supportingDevice[from];
   const event: OperationalEvent = dispatched
     ? {
         id: `event-${nextTick}-${movingOrder.id}`,
@@ -328,6 +346,13 @@ export function advanceSimulation(state: SimulationState): SimulationState {
         to,
         deviceId,
       };
+  const activityEvent: OperationalEvent = {
+    id: `event-${nextTick}-${deviceActivity.id}`,
+    tick: nextTick,
+    type: 'device.activity',
+    deviceId: deviceActivity.id,
+    message: deviceActivity.message,
+  };
 
   return {
     ...state,
@@ -336,9 +361,11 @@ export function advanceSimulation(state: SimulationState): SimulationState {
       index === orderIndex ? { ...order, stage: to } : order,
     ),
     devices: state.devices.map((device) =>
-      device.id === deviceId ? { ...device, lastSeenTick: nextTick } : device,
+      device.id === deviceId || device.id === deviceActivity.id
+        ? { ...device, lastSeenTick: nextTick }
+        : device,
     ),
-    events: [event, ...state.events].slice(0, 50),
+    events: [event, activityEvent, ...state.events].slice(0, 50),
     throughput: {
       dispatchedOrders:
         state.throughput.dispatchedOrders + (dispatched ? 1 : 0),

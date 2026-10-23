@@ -3,6 +3,7 @@ import {
   WORKFLOW_STAGES,
   describeEvent,
   getStageIndex,
+  type DeviceType,
 } from '@opsbridge/domain';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useLiveSimulation } from './useLiveSimulation';
@@ -12,9 +13,17 @@ function activityTime(index: number) {
   return `−${Math.round((SIMULATION_TICK_MS * index) / 1000)}s`;
 }
 
+const deviceTypeLabels: Record<DeviceType, string> = {
+  barcode_scanner: 'Barcode scanner',
+  camera: 'Operations camera',
+  label_printer: 'Label printer',
+  handheld_terminal: 'Handheld terminal',
+};
+
 export function App() {
   const { connection, simulation } = useLiveSimulation();
   const [selectedOrderId, setSelectedOrderId] = useState('OB-10431');
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>();
 
   const selectedOrder = useMemo(
     () =>
@@ -25,6 +34,12 @@ export function App() {
   const onlineDevices = simulation.devices.filter(
     (device) => device.status === 'online',
   ).length;
+  const selectedDevice = simulation.devices.find(
+    (device) => device.id === selectedDeviceId,
+  );
+  const selectedDeviceEvents = selectedDevice
+    ? simulation.events.filter((event) => event.deviceId === selectedDevice.id)
+    : [];
 
   return (
     <main className="app-shell">
@@ -97,7 +112,10 @@ export function App() {
                 aria-pressed={selectedOrderId === order.id}
                 className={`parcel parcel-${stageIndex} ${selectedOrderId === order.id ? 'selected' : ''}`}
                 key={order.id}
-                onClick={() => setSelectedOrderId(order.id)}
+                onClick={() => {
+                  setSelectedOrderId(order.id);
+                  setSelectedDeviceId(undefined);
+                }}
                 style={
                   {
                     '--parcel-colour': order.colour,
@@ -114,6 +132,9 @@ export function App() {
             const device = simulation.devices.find(
               ({ id }) => id === stage.primaryDeviceId,
             );
+            const stageDevices = simulation.devices.filter(
+              (candidate) => candidate.stage === stage.id,
+            );
 
             return (
               <article className="station" key={stage.id}>
@@ -124,13 +145,59 @@ export function App() {
                 />
                 <h2>{stage.name}</h2>
                 <p>{stage.note}</p>
-                <code>{stage.primaryDeviceId}</code>
+                <div className="station-devices">
+                  {stageDevices.map((stageDevice) => (
+                    <button
+                      aria-label={`Inspect ${stageDevice.name}`}
+                      aria-pressed={selectedDeviceId === stageDevice.id}
+                      key={stageDevice.id}
+                      onClick={() => setSelectedDeviceId(stageDevice.id)}
+                      type="button"
+                    >
+                      <i className={stageDevice.status} />
+                      {stageDevice.id}
+                    </button>
+                  ))}
+                </div>
               </article>
             );
           })}
         </div>
 
-        {selectedOrder ? (
+        {selectedDevice ? (
+          <aside className="order-focus device-focus" aria-live="polite">
+            <div>
+              <span className="focus-label">Inspecting</span>
+              <strong>{selectedDevice.id}</strong>
+            </div>
+            <div>
+              <span>Equipment</span>
+              <strong>{deviceTypeLabels[selectedDevice.type]}</strong>
+            </div>
+            <div>
+              <span>Health</span>
+              <strong className={`health-${selectedDevice.status}`}>
+                {selectedDevice.status}
+              </strong>
+            </div>
+            <div>
+              <span>Last report</span>
+              <strong>
+                {selectedDevice.lastSeenTick === 0
+                  ? 'Waiting for activity'
+                  : `${Math.max(0, simulation.clock.tick - selectedDevice.lastSeenTick) * (SIMULATION_TICK_MS / 1000)}s ago`}
+              </strong>
+            </div>
+            <div className="device-event-list">
+              <span>Recent device activity</span>
+              <strong>
+                {selectedDeviceEvents[0]
+                  ? describeEvent(selectedDeviceEvents[0])
+                  : `${selectedDevice.name} is online and waiting politely.`}
+              </strong>
+            </div>
+          </aside>
+        ) : selectedOrder ? (
           <aside className="order-focus" aria-live="polite">
             <div>
               <span className="focus-label">Following</span>

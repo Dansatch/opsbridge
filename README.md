@@ -29,6 +29,11 @@ Operational events are written to SQLite as they happen and are available from
 `/api/events`. The store keeps transport and persistence concerns outside the
 simulation rules, and caps history requests at 100 records.
 
+Every order transition now activates a second piece of simulated equipment:
+cameras capture arrivals and quality checks, scanners verify picks, and handhelds
+assign dispatch bays. Selecting any of the eight devices opens a compact health
+and recent-activity view without leaving the warehouse floor.
+
 ```sh
 pnpm install
 pnpm verify

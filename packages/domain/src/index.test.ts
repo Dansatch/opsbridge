@@ -31,6 +31,14 @@ describe('warehouse domain', () => {
       to: 'picking',
       deviceId: 'RCV-SCN-01',
     });
+    expect(firstRun.events[1]).toMatchObject({
+      type: 'device.activity',
+      deviceId: 'RCV-CAM-01',
+      message: expect.stringContaining('captured OB-10429'),
+    });
+    expect(
+      firstRun.devices.find(({ id }) => id === 'RCV-CAM-01')?.lastSeenTick,
+    ).toBe(1);
   });
 
   it('records a dispatch when an order completes the route', () => {

@@ -43,7 +43,14 @@ export function buildApp(options: AppOptions = {}) {
   const stopPersisting = simulation.subscribe((state) => {
     const latestEvent = state.events[0];
     if (!latestEvent || latestEvent.id === latestEventId) return;
-    eventStore.record(latestEvent);
+    const previousEventIndex = state.events.findIndex(
+      ({ id }) => id === latestEventId,
+    );
+    const newEvents = state.events.slice(
+      0,
+      previousEventIndex === -1 ? 1 : previousEventIndex,
+    );
+    eventStore.recordMany(newEvents);
     latestEventId = latestEvent.id;
   });
 
