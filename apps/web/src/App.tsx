@@ -1,4 +1,5 @@
 import {
+  FAILURE_SCENARIOS,
   SIMULATION_TICK_MS,
   WORKFLOW_STAGES,
   describeEvent,
@@ -21,9 +22,10 @@ const deviceTypeLabels: Record<DeviceType, string> = {
 };
 
 export function App() {
-  const { connection, simulation } = useLiveSimulation();
+  const { connection, simulation, triggerFailure } = useLiveSimulation();
   const [selectedOrderId, setSelectedOrderId] = useState('OB-10431');
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>();
+  const [troubleOpen, setTroubleOpen] = useState(false);
 
   const selectedOrder = useMemo(
     () =>
@@ -40,6 +42,17 @@ export function App() {
   const selectedDeviceEvents = selectedDevice
     ? simulation.events.filter((event) => event.deviceId === selectedDevice.id)
     : [];
+  const offlineDevices = simulation.devices.filter(
+    (device) => device.status === 'offline',
+  );
+  const degradedDevices = simulation.devices.filter(
+    (device) => device.status === 'degraded',
+  );
+  const operationMessage = offlineDevices.length
+    ? `${offlineDevices[0]?.name} has stopped. The floor has noticed.`
+    : degradedDevices.length
+      ? `${degradedDevices[0]?.name} is struggling, but still trying.`
+      : 'Everything is moving nicely.';
 
   return (
     <main className="app-shell">
@@ -58,10 +71,51 @@ export function App() {
           <i className={connection} />{' '}
           {connection === 'live' ? 'Live from server' : 'Reconnecting'}
         </div>
-        <button className="trouble-button" type="button">
+        <button
+          aria-expanded={troubleOpen}
+          className="trouble-button"
+          onClick={() => setTroubleOpen((open) => !open)}
+          type="button"
+        >
           Cause some trouble
         </button>
       </header>
+
+      {troubleOpen ? (
+        <section className="trouble-drawer" aria-label="Failure scenarios">
+          <div>
+            <span>Failure drill</span>
+            <strong>What should misbehave?</strong>
+            <p>
+              Pick a synthetic fault and watch the floor react in real time.
+            </p>
+          </div>
+          <div className="failure-options">
+            {FAILURE_SCENARIOS.map((scenario) => {
+              const device = simulation.devices.find(
+                ({ id }) => id === scenario.deviceId,
+              );
+              const active = device?.status === scenario.status;
+
+              return (
+                <button
+                  disabled={active || connection !== 'live'}
+                  key={scenario.id}
+                  onClick={() => {
+                    if (!triggerFailure(scenario.id)) return;
+                    setSelectedDeviceId(scenario.deviceId);
+                    setTroubleOpen(false);
+                  }}
+                  type="button"
+                >
+                  <span>{active ? 'Already happening' : scenario.label}</span>
+                  <small>{scenario.detail}</small>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="summary" aria-label="Operational summary">
         <div>
@@ -78,7 +132,7 @@ export function App() {
           <strong>{simulation.orders.length}</strong>
           <span>orders moving</span>
         </div>
-        <p>Everything is moving nicely.</p>
+        <p>{operationMessage}</p>
       </section>
 
       <section className="floor" aria-labelledby="floor-title">
@@ -135,16 +189,25 @@ export function App() {
             const stageDevices = simulation.devices.filter(
               (candidate) => candidate.stage === stage.id,
             );
+            const activeFailure = FAILURE_SCENARIOS.find((scenario) => {
+              const failedDevice = stageDevices.find(
+                ({ id }) => id === scenario.deviceId,
+              );
+              return failedDevice?.status === scenario.status;
+            });
 
             return (
-              <article className="station" key={stage.id}>
+              <article
+                className={`station ${activeFailure ? 'has-trouble' : ''}`}
+                key={stage.id}
+              >
                 <div className="station-index">0{index + 1}</div>
                 <span
                   className={`device-light ${device?.status ?? 'offline'}`}
                   aria-label={`Device ${device?.status ?? 'offline'}`}
                 />
                 <h2>{stage.name}</h2>
-                <p>{stage.note}</p>
+                <p>{activeFailure?.headline ?? stage.note}</p>
                 <div className="station-devices">
                   {stageDevices.map((stageDevice) => (
                     <button

@@ -35,6 +35,60 @@ export type DeviceStatus = 'online' | 'degraded' | 'offline';
 export type IncidentStatus = 'open' | 'acknowledged' | 'resolved';
 export type IncidentSeverity = 'warning' | 'critical';
 
+export const FAILURE_SCENARIOS = [
+  {
+    id: 'scanner_disconnect',
+    label: 'Disconnect dispatch scanner',
+    deviceId: 'DSP-SCN-01',
+    status: 'offline',
+    headline: 'Dispatch scanner has gone quiet',
+    detail:
+      'No scans are reaching Bay 2. That parcel is not going anywhere yet.',
+    eventMessage: 'DSP-SCN-01 stopped reporting. An unusually quiet scanner.',
+  },
+  {
+    id: 'scanner_slowdown',
+    label: 'Slow receiving scanner',
+    deviceId: 'RCV-SCN-01',
+    status: 'degraded',
+    headline: 'Receiving scans are taking the scenic route',
+    detail:
+      'Responses are arriving slowly, so some orders will wait at the door.',
+    eventMessage:
+      'RCV-SCN-01 is responding slowly. It may be thinking about lunch.',
+  },
+  {
+    id: 'printer_jam',
+    label: 'Jam packing printer',
+    deviceId: 'PKG-PRN-01',
+    status: 'offline',
+    headline: 'The label printer has eaten the paper',
+    detail: 'Packing cannot release the next parcel until the printer behaves.',
+    eventMessage: 'PKG-PRN-01 jammed. The label is now modern art.',
+  },
+  {
+    id: 'failed_label_print',
+    label: 'Fail the next label',
+    deviceId: 'PKG-PRN-01',
+    status: 'degraded',
+    headline: 'That label did not make the cut',
+    detail:
+      'The print failed validation and the parcel is waiting for another try.',
+    eventMessage:
+      'PKG-PRN-01 produced an unreadable label. Bold, but unhelpful.',
+  },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  deviceId: string;
+  status: Exclude<DeviceStatus, 'online'>;
+  headline: string;
+  detail: string;
+  eventMessage: string;
+}[];
+
+export type FailureScenarioId = (typeof FAILURE_SCENARIOS)[number]['id'];
+
 export type Order = {
   id: string;
   destination: string;
@@ -89,6 +143,7 @@ export type OperationalEvent =
       type: 'device.status_changed';
       from: DeviceStatus;
       to: DeviceStatus;
+      message: string;
     })
   | (EventBase & {
       type: 'incident.opened';
@@ -117,9 +172,9 @@ export type SimulationState = {
   };
 };
 
-export type SimulationClientMessage = {
-  type: 'simulation.subscribe';
-};
+export type SimulationClientMessage =
+  | { type: 'simulation.subscribe' }
+  | { type: 'simulation.trigger_failure'; failureId: FailureScenarioId };
 
 export type SimulationServerMessage = {
   type: 'simulation.snapshot';
@@ -282,9 +337,7 @@ export function describeEvent(event: OperationalEvent) {
   }
 
   if (event.type === 'device.activity') return event.message;
-  if (event.type === 'device.status_changed') {
-    return `${event.deviceId} changed from ${event.from} to ${event.to}`;
-  }
+  if (event.type === 'device.status_changed') return event.message;
   if (event.type === 'incident.opened') {
     return `Incident ${event.incidentId} opened for ${event.deviceId}`;
   }
@@ -308,6 +361,26 @@ export function advanceSimulation(state: SimulationState): SimulationState {
   const to = nextWorkflowStage(from);
   const stage = WORKFLOW_STAGES.find(({ id }) => id === from);
   const deviceId = stage?.primaryDeviceId ?? 'OPS-SYS-01';
+  const primaryDevice = state.devices.find((device) => device.id === deviceId);
+  const isBlocked =
+    primaryDevice?.status === 'offline' ||
+    (primaryDevice?.status === 'degraded' && nextTick % 2 === 0);
+
+  if (isBlocked) {
+    const event: OperationalEvent = {
+      id: `event-${nextTick}-${deviceId}-waiting`,
+      tick: nextTick,
+      type: 'device.activity',
+      deviceId,
+      message: `${movingOrder.id} is waiting at ${stage?.name ?? from}. ${deviceId} needs a moment.`,
+    };
+
+    return {
+      ...state,
+      clock: { ...state.clock, tick: nextTick },
+      events: [event, ...state.events].slice(0, 50),
+    };
+  }
   const dispatched = from === 'dispatch';
   const supportingDevice = {
     receiving: {
@@ -370,5 +443,36 @@ export function advanceSimulation(state: SimulationState): SimulationState {
       dispatchedOrders:
         state.throughput.dispatchedOrders + (dispatched ? 1 : 0),
     },
+  };
+}
+
+export function triggerFailure(
+  state: SimulationState,
+  failureId: FailureScenarioId,
+): SimulationState {
+  const scenario = FAILURE_SCENARIOS.find(({ id }) => id === failureId);
+  if (!scenario) return state;
+
+  const device = state.devices.find(({ id }) => id === scenario.deviceId);
+  if (!device || device.status === scenario.status) return state;
+
+  const event: OperationalEvent = {
+    id: `event-${state.clock.tick}-${device.id}-${scenario.status}-${state.events.length}`,
+    tick: state.clock.tick,
+    type: 'device.status_changed',
+    deviceId: device.id,
+    from: device.status,
+    to: scenario.status,
+    message: scenario.eventMessage,
+  };
+
+  return {
+    ...state,
+    devices: state.devices.map((candidate) =>
+      candidate.id === device.id
+        ? { ...candidate, status: scenario.status }
+        : candidate,
+    ),
+    events: [event, ...state.events].slice(0, 50),
   };
 }

@@ -1,5 +1,6 @@
 import {
   createInitialSimulation,
+  type FailureScenarioId,
   type SimulationClientMessage,
   type SimulationServerMessage,
   type SimulationState,
@@ -34,6 +35,7 @@ function isSnapshotMessage(value: unknown): value is SimulationServerMessage {
 export function useLiveSimulation() {
   const [simulation, setSimulation] = useState(createInitialSimulation);
   const [connection, setConnection] = useState<LiveConnection>('connecting');
+  const [socket, setSocket] = useState<WebSocket>();
 
   useEffect(() => {
     let disposed = false;
@@ -57,6 +59,7 @@ export function useLiveSimulation() {
       if (disposed) return;
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       socket = new WebSocket(`${protocol}//${window.location.host}/api/live`);
+      setSocket(socket);
 
       socket.addEventListener('open', () => {
         setConnection('live');
@@ -75,6 +78,7 @@ export function useLiveSimulation() {
       });
       socket.addEventListener('close', () => {
         if (disposed) return;
+        setSocket(undefined);
         setConnection('reconnecting');
         reconnectTimer = window.setTimeout(connect, 1_500);
       });
@@ -91,5 +95,15 @@ export function useLiveSimulation() {
     };
   }, []);
 
-  return { connection, simulation };
+  const triggerFailure = (failureId: FailureScenarioId) => {
+    if (socket?.readyState !== WebSocket.OPEN) return false;
+    const message: SimulationClientMessage = {
+      type: 'simulation.trigger_failure',
+      failureId,
+    };
+    socket.send(JSON.stringify(message));
+    return true;
+  };
+
+  return { connection, simulation, triggerFailure };
 }

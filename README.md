@@ -34,6 +34,10 @@ cameras capture arrivals and quality checks, scanners verify picks, and handheld
 assign dispatch bays. Selecting any of the eight devices opens a compact health
 and recent-activity view without leaving the warehouse floor.
 
+The failure drill can disconnect or slow a scanner, jam the packing printer or
+fail a label check. The affected device and station react immediately, blocked
+orders stay put, and the event is shared with every connected control-room view.
+
 ```sh
 pnpm install
 pnpm verify

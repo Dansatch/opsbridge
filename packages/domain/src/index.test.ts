@@ -4,6 +4,7 @@ import {
   advanceSimulation,
   createInitialSimulation,
   nextWorkflowStage,
+  triggerFailure,
 } from './index.js';
 
 describe('warehouse domain', () => {
@@ -54,6 +55,36 @@ describe('warehouse domain', () => {
       type: 'order.dispatched',
       orderId: 'OB-10436',
       destination: 'Birmingham',
+    });
+  });
+
+  it('puts a selected device into a realistic failure state', () => {
+    const failed = triggerFailure(createInitialSimulation(), 'printer_jam');
+
+    expect(failed.devices.find(({ id }) => id === 'PKG-PRN-01')?.status).toBe(
+      'offline',
+    );
+    expect(failed.events[0]).toMatchObject({
+      type: 'device.status_changed',
+      deviceId: 'PKG-PRN-01',
+      from: 'online',
+      to: 'offline',
+      message: expect.stringContaining('modern art'),
+    });
+  });
+
+  it('holds an order when its device is offline', () => {
+    let state = createInitialSimulation();
+    state = triggerFailure(state, 'printer_jam');
+    state = advanceSimulation(state);
+    state = advanceSimulation(state);
+    state = advanceSimulation(state);
+
+    expect(state.orders[2]?.stage).toBe('packing');
+    expect(state.events[0]).toMatchObject({
+      type: 'device.activity',
+      deviceId: 'PKG-PRN-01',
+      message: expect.stringContaining('is waiting at Packing'),
     });
   });
 });

@@ -2,6 +2,8 @@ import {
   SIMULATION_TICK_MS,
   advanceSimulation,
   createInitialSimulation,
+  triggerFailure,
+  type FailureScenarioId,
   type SimulationState,
 } from '@opsbridge/domain';
 
@@ -20,6 +22,10 @@ export class SimulationEngine {
 
   advance() {
     return this.update(advanceSimulation);
+  }
+
+  triggerFailure(failureId: FailureScenarioId) {
+    return this.update((state) => triggerFailure(state, failureId));
   }
 
   subscribe(listener: SimulationListener) {

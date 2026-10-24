@@ -90,6 +90,28 @@ describe('OpsBridge server', () => {
       state: { clock: { tick: 1 } },
     });
 
+    socket.send(
+      JSON.stringify({
+        type: 'simulation.trigger_failure',
+        failureId: 'printer_jam',
+      }),
+    );
+    await expect.poll(() => messages.length).toBe(3);
+    expect(JSON.parse(messages[2] ?? '{}')).toMatchObject({
+      type: 'simulation.snapshot',
+      state: {
+        devices: expect.arrayContaining([
+          expect.objectContaining({ id: 'PKG-PRN-01', status: 'offline' }),
+        ]),
+        events: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'device.status_changed',
+            deviceId: 'PKG-PRN-01',
+          }),
+        ]),
+      },
+    });
+
     socket.terminate();
   });
 });
