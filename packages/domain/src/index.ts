@@ -182,6 +182,11 @@ export type OperationalEvent =
   | (EventBase & {
       type: 'incident.acknowledged' | 'incident.resolved';
       incidentId: string;
+    })
+  | (EventBase & {
+      type: 'shift.changed';
+      from: Shift;
+      to: Shift;
     });
 
 export type SimulationClock = {
@@ -204,6 +209,7 @@ export type SimulationState = {
 export type SimulationClientMessage =
   | { type: 'simulation.subscribe' }
   | { type: 'simulation.trigger_failure'; failureId: FailureScenarioId }
+  | { type: 'simulation.change_shift'; shift: Shift }
   | { type: 'incident.acknowledge'; incidentId: string }
   | { type: 'incident.recover'; incidentId: string };
 
@@ -375,8 +381,33 @@ export function describeEvent(event: OperationalEvent) {
   if (event.type === 'incident.acknowledged') {
     return `${event.incidentId} acknowledged. Sleeves officially rolled up.`;
   }
+  if (event.type === 'shift.changed') {
+    return `${event.to === 'night' ? 'Night' : 'Day'} shift has the floor. Handover complete.`;
+  }
 
   return `${event.incidentId} resolved. The floor is moving again.`;
+}
+
+export function changeShift(
+  state: SimulationState,
+  shift: Shift,
+): SimulationState {
+  if (state.shift === shift) return state;
+
+  const event: OperationalEvent = {
+    id: `event-${state.clock.tick}-shift-${shift}-${state.events.length}`,
+    tick: state.clock.tick,
+    type: 'shift.changed',
+    deviceId: 'OPS-BRIDGE',
+    from: state.shift,
+    to: shift,
+  };
+
+  return {
+    ...state,
+    shift,
+    events: [event, ...state.events].slice(0, 50),
+  };
 }
 
 export function advanceSimulation(state: SimulationState): SimulationState {

@@ -4,6 +4,7 @@ import {
   type SimulationClientMessage,
   type SimulationServerMessage,
   type SimulationState,
+  type Shift,
 } from '@opsbridge/domain';
 import { useEffect, useState } from 'react';
 
@@ -105,6 +106,16 @@ export function useLiveSimulation() {
     return true;
   };
 
+  const changeShift = (shift: Shift) => {
+    if (socket?.readyState !== WebSocket.OPEN) return false;
+    const message: SimulationClientMessage = {
+      type: 'simulation.change_shift',
+      shift,
+    };
+    socket.send(JSON.stringify(message));
+    return true;
+  };
+
   const acknowledgeIncident = (incidentId: string) => {
     if (socket?.readyState !== WebSocket.OPEN) return false;
     const message: SimulationClientMessage = {
@@ -127,6 +138,7 @@ export function useLiveSimulation() {
 
   return {
     acknowledgeIncident,
+    changeShift,
     connection,
     recoverIncident,
     simulation,

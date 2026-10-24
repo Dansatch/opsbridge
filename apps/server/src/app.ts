@@ -25,6 +25,9 @@ function isSubscribeMessage(value: unknown): value is SimulationClientMessage {
       (value.type === 'simulation.trigger_failure' &&
         'failureId' in value &&
         typeof value.failureId === 'string') ||
+      (value.type === 'simulation.change_shift' &&
+        'shift' in value &&
+        (value.shift === 'day' || value.shift === 'night')) ||
       (value.type === 'incident.acknowledge' &&
         'incidentId' in value &&
         typeof value.incidentId === 'string') ||
@@ -119,6 +122,8 @@ export function buildApp(options: AppOptions = {}) {
             sendSnapshot();
           } else if (message.type === 'simulation.trigger_failure') {
             simulation.triggerFailure(message.failureId);
+          } else if (message.type === 'simulation.change_shift') {
+            simulation.changeShift(message.shift);
           } else if (message.type === 'incident.acknowledge') {
             simulation.acknowledgeIncident(message.incidentId);
           } else {

@@ -32,6 +32,11 @@ button {
   min-height: 100vh;
   background:
     radial-gradient(circle at 50% 20%, #173150 0, transparent 42%), #07111f;
+  transition: background 500ms ease;
+}
+.app-shell.shift-night {
+  background:
+    radial-gradient(circle at 50% 18%, #272957 0, transparent 44%), #060b18;
 }
 
 .topbar {
@@ -70,13 +75,23 @@ button {
   border-radius: 12px;
   color: #9dafc4;
 }
-.shift-switch span {
+.shift-switch button {
   padding: 8px 14px;
+  border: 0;
   border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
 }
-.shift-switch .active {
+.shift-switch button[aria-pressed='true'] {
   color: #fff;
   background: #245f9f;
+}
+.shift-night .shift-switch button[aria-pressed='true'] {
+  background: #6055a8;
+}
+.shift-switch button:disabled {
+  cursor: wait;
 }
 .live-status {
   justify-self: end;
@@ -213,6 +228,15 @@ button {
   overflow: hidden;
   background: linear-gradient(180deg, #102943, #0b1c2e);
   box-shadow: 0 28px 70px #0006;
+}
+.shift-night .floor {
+  border-color: #454775;
+  background: linear-gradient(180deg, #181f42, #0d172d);
+}
+.shift-night .floor-status-dot,
+.shift-night .pulse {
+  background: #9c8cff;
+  box-shadow: 0 0 10px #9c8cff;
 }
 .floor-heading {
   display: flex;

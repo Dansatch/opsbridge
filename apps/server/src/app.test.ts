@@ -91,13 +91,27 @@ describe('OpsBridge server', () => {
     });
 
     socket.send(
+      JSON.stringify({ type: 'simulation.change_shift', shift: 'night' }),
+    );
+    await expect.poll(() => messages.length).toBe(3);
+    expect(JSON.parse(messages[2] ?? '{}')).toMatchObject({
+      type: 'simulation.snapshot',
+      state: {
+        shift: 'night',
+        events: expect.arrayContaining([
+          expect.objectContaining({ type: 'shift.changed' }),
+        ]),
+      },
+    });
+
+    socket.send(
       JSON.stringify({
         type: 'simulation.trigger_failure',
         failureId: 'printer_jam',
       }),
     );
-    await expect.poll(() => messages.length).toBe(3);
-    expect(JSON.parse(messages[2] ?? '{}')).toMatchObject({
+    await expect.poll(() => messages.length).toBe(4);
+    expect(JSON.parse(messages[3] ?? '{}')).toMatchObject({
       type: 'simulation.snapshot',
       state: {
         devices: expect.arrayContaining([
@@ -119,8 +133,8 @@ describe('OpsBridge server', () => {
         incidentId: 'INC-001',
       }),
     );
-    await expect.poll(() => messages.length).toBe(4);
-    expect(JSON.parse(messages[3] ?? '{}')).toMatchObject({
+    await expect.poll(() => messages.length).toBe(5);
+    expect(JSON.parse(messages[4] ?? '{}')).toMatchObject({
       type: 'simulation.snapshot',
       state: {
         incidents: [
@@ -135,8 +149,8 @@ describe('OpsBridge server', () => {
         incidentId: 'INC-001',
       }),
     );
-    await expect.poll(() => messages.length).toBe(5);
-    expect(JSON.parse(messages[4] ?? '{}')).toMatchObject({
+    await expect.poll(() => messages.length).toBe(6);
+    expect(JSON.parse(messages[5] ?? '{}')).toMatchObject({
       type: 'simulation.snapshot',
       state: {
         devices: expect.arrayContaining([

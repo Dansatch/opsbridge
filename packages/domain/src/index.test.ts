@@ -3,6 +3,7 @@ import {
   WORKFLOW_STAGES,
   acknowledgeIncident,
   advanceSimulation,
+  changeShift,
   createInitialSimulation,
   nextWorkflowStage,
   recoverIncident,
@@ -58,6 +59,23 @@ describe('warehouse domain', () => {
       orderId: 'OB-10436',
       destination: 'Birmingham',
     });
+  });
+
+  it('hands the same operation between day and night shifts', () => {
+    const day = createInitialSimulation();
+    const night = changeShift(day, 'night');
+    const unchanged = changeShift(night, 'night');
+
+    expect(night.shift).toBe('night');
+    expect(night.orders).toBe(day.orders);
+    expect(night.incidents).toBe(day.incidents);
+    expect(night.events[0]).toMatchObject({
+      type: 'shift.changed',
+      deviceId: 'OPS-BRIDGE',
+      from: 'day',
+      to: 'night',
+    });
+    expect(unchanged).toBe(night);
   });
 
   it('puts a selected device into a realistic failure state', () => {

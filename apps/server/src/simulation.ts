@@ -2,10 +2,12 @@ import {
   SIMULATION_TICK_MS,
   acknowledgeIncident,
   advanceSimulation,
+  changeShift,
   createInitialSimulation,
   recoverIncident,
   triggerFailure,
   type FailureScenarioId,
+  type Shift,
   type SimulationState,
 } from '@opsbridge/domain';
 
@@ -28,6 +30,10 @@ export class SimulationEngine {
 
   triggerFailure(failureId: FailureScenarioId) {
     return this.update((state) => triggerFailure(state, failureId));
+  }
+
+  changeShift(shift: Shift) {
+    return this.update((state) => changeShift(state, shift));
   }
 
   acknowledgeIncident(incidentId: string) {

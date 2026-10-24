@@ -46,6 +46,10 @@ After acknowledgement, each incident presents a fault-specific recovery step.
 Applying it returns the device to service, resolves the incident and allows waiting
 orders to continue through the warehouse.
 
+The day and night controls now perform a live operational handover rather than a
+local theme change. The server preserves orders and incidents, broadcasts the new
+shift to every control-room view and records the handover in recent activity.
+
 ```sh
 pnpm install
 pnpm verify

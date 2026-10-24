@@ -21,9 +21,23 @@ const deviceTypeLabels: Record<DeviceType, string> = {
   handheld_terminal: 'Handheld terminal',
 };
 
+const shiftCopy = {
+  day: {
+    eyebrow: 'Synthetic operations · Day shift',
+    headline: 'A warehouse with somewhere to be.',
+    healthy: 'Everything is moving nicely.',
+  },
+  night: {
+    eyebrow: 'Synthetic operations · Night shift',
+    headline: 'The lights are low. The standards are not.',
+    healthy: 'Night crew steady. Even the printer is behaving.',
+  },
+} as const;
+
 export function App() {
   const {
     acknowledgeIncident,
+    changeShift,
     connection,
     recoverIncident,
     simulation,
@@ -67,10 +81,10 @@ export function App() {
     ? `${offlineDevices[0]?.name} has stopped. The floor has noticed.`
     : degradedDevices.length
       ? `${degradedDevices[0]?.name} is struggling, but still trying.`
-      : 'Everything is moving nicely.';
+      : shiftCopy[simulation.shift].healthy;
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell shift-${simulation.shift}`}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="OpsBridge home">
           <span className="brand-mark" aria-hidden="true" />
@@ -78,8 +92,22 @@ export function App() {
         </a>
 
         <div className="shift-switch" aria-label="Current warehouse shift">
-          <span className="active">☀ Day shift</span>
-          <span>☾ Night shift</span>
+          <button
+            aria-pressed={simulation.shift === 'day'}
+            disabled={connection !== 'live'}
+            onClick={() => changeShift('day')}
+            type="button"
+          >
+            ☀ Day shift
+          </button>
+          <button
+            aria-pressed={simulation.shift === 'night'}
+            disabled={connection !== 'live'}
+            onClick={() => changeShift('night')}
+            type="button"
+          >
+            ☾ Night shift
+          </button>
         </div>
 
         <div className="live-status">
@@ -166,8 +194,8 @@ export function App() {
       <section className="floor" aria-labelledby="floor-title">
         <div className="floor-heading">
           <div>
-            <p className="eyebrow">Synthetic operations · Day shift</p>
-            <h1 id="floor-title">A warehouse with somewhere to be.</h1>
+            <p className="eyebrow">{shiftCopy[simulation.shift].eyebrow}</p>
+            <h1 id="floor-title">{shiftCopy[simulation.shift].headline}</h1>
           </div>
           <p>
             <span className="floor-status-dot" /> Server tick{' '}
