@@ -115,5 +115,21 @@ export function useLiveSimulation() {
     return true;
   };
 
-  return { acknowledgeIncident, connection, simulation, triggerFailure };
+  const recoverIncident = (incidentId: string) => {
+    if (socket?.readyState !== WebSocket.OPEN) return false;
+    const message: SimulationClientMessage = {
+      type: 'incident.recover',
+      incidentId,
+    };
+    socket.send(JSON.stringify(message));
+    return true;
+  };
+
+  return {
+    acknowledgeIncident,
+    connection,
+    recoverIncident,
+    simulation,
+    triggerFailure,
+  };
 }

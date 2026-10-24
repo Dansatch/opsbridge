@@ -46,6 +46,11 @@ export const FAILURE_SCENARIOS = [
     detail:
       'No scans are reaching Bay 2. That parcel is not going anywhere yet.',
     eventMessage: 'DSP-SCN-01 stopped reporting. An unusually quiet scanner.',
+    recoveryLabel: 'Reconnect scanner',
+    recoveryInstruction:
+      'Restore the scanner connection and confirm a fresh heartbeat.',
+    recoveredMessage:
+      'DSP-SCN-01 reconnected. Dispatch can hear the beeps again.',
   },
   {
     id: 'scanner_slowdown',
@@ -58,6 +63,11 @@ export const FAILURE_SCENARIOS = [
       'Responses are arriving slowly, so some orders will wait at the door.',
     eventMessage:
       'RCV-SCN-01 is responding slowly. It may be thinking about lunch.',
+    recoveryLabel: 'Restart scan service',
+    recoveryInstruction:
+      'Restart the scan service and verify normal response time.',
+    recoveredMessage:
+      'RCV-SCN-01 is back at full speed. Lunch break cancelled.',
   },
   {
     id: 'printer_jam',
@@ -68,6 +78,11 @@ export const FAILURE_SCENARIOS = [
     headline: 'The label printer has eaten the paper',
     detail: 'Packing cannot release the next parcel until the printer behaves.',
     eventMessage: 'PKG-PRN-01 jammed. The label is now modern art.',
+    recoveryLabel: 'Clear printer jam',
+    recoveryInstruction:
+      'Clear the paper path, reload labels and run a test print.',
+    recoveredMessage:
+      'PKG-PRN-01 is clear and printing labels, not sculptures.',
   },
   {
     id: 'failed_label_print',
@@ -80,6 +95,11 @@ export const FAILURE_SCENARIOS = [
       'The print failed validation and the parcel is waiting for another try.',
     eventMessage:
       'PKG-PRN-01 produced an unreadable label. Bold, but unhelpful.',
+    recoveryLabel: 'Reprint and validate',
+    recoveryInstruction:
+      'Reprint the label and confirm the barcode passes validation.',
+    recoveredMessage:
+      'PKG-PRN-01 passed the reprint check. Much more readable.',
   },
 ] as const satisfies readonly {
   id: string;
@@ -90,6 +110,9 @@ export const FAILURE_SCENARIOS = [
   headline: string;
   detail: string;
   eventMessage: string;
+  recoveryLabel: string;
+  recoveryInstruction: string;
+  recoveredMessage: string;
 }[];
 
 export type FailureScenarioId = (typeof FAILURE_SCENARIOS)[number]['id'];
@@ -181,7 +204,8 @@ export type SimulationState = {
 export type SimulationClientMessage =
   | { type: 'simulation.subscribe' }
   | { type: 'simulation.trigger_failure'; failureId: FailureScenarioId }
-  | { type: 'incident.acknowledge'; incidentId: string };
+  | { type: 'incident.acknowledge'; incidentId: string }
+  | { type: 'incident.recover'; incidentId: string };
 
 export type SimulationServerMessage = {
   type: 'simulation.snapshot';
@@ -352,7 +376,7 @@ export function describeEvent(event: OperationalEvent) {
     return `${event.incidentId} acknowledged. Sleeves officially rolled up.`;
   }
 
-  return `Incident ${event.incidentId} resolved`;
+  return `${event.incidentId} resolved. The floor is moving again.`;
 }
 
 export function advanceSimulation(state: SimulationState): SimulationState {
@@ -540,5 +564,55 @@ export function acknowledgeIncident(
         : candidate,
     ),
     events: [event, ...state.events].slice(0, 50),
+  };
+}
+
+export function recoverIncident(
+  state: SimulationState,
+  incidentId: string,
+): SimulationState {
+  const incident = state.incidents.find(({ id }) => id === incidentId);
+  if (!incident || incident.status !== 'acknowledged') return state;
+
+  const device = state.devices.find(({ id }) => id === incident.deviceId);
+  const scenario = FAILURE_SCENARIOS.find(
+    ({ id }) => id === incident.failureId,
+  );
+  if (!device || !scenario) return state;
+
+  const statusEvent: OperationalEvent = {
+    id: `event-${state.clock.tick}-${device.id}-recovered`,
+    tick: state.clock.tick,
+    type: 'device.status_changed',
+    deviceId: device.id,
+    from: device.status,
+    to: 'online',
+    message: scenario.recoveredMessage,
+  };
+  const incidentEvent: OperationalEvent = {
+    id: `event-${state.clock.tick}-${incident.id}-resolved`,
+    tick: state.clock.tick,
+    type: 'incident.resolved',
+    deviceId: device.id,
+    incidentId: incident.id,
+  };
+
+  return {
+    ...state,
+    devices: state.devices.map((candidate) =>
+      candidate.id === device.id
+        ? { ...candidate, status: 'online', lastSeenTick: state.clock.tick }
+        : candidate,
+    ),
+    incidents: state.incidents.map((candidate) =>
+      candidate.id === incident.id
+        ? {
+            ...candidate,
+            status: 'resolved',
+            resolvedAtTick: state.clock.tick,
+          }
+        : candidate,
+    ),
+    events: [incidentEvent, statusEvent, ...state.events].slice(0, 50),
   };
 }

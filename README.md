@@ -42,6 +42,10 @@ OpsBridge now detects each injected fault automatically, assigns warning or
 critical priority and opens a focused incident in the control room. Visitors can
 acknowledge it without losing sight of the affected equipment or warehouse flow.
 
+After acknowledgement, each incident presents a fault-specific recovery step.
+Applying it returns the device to service, resolves the incident and allows waiting
+orders to continue through the warehouse.
+
 ```sh
 pnpm install
 pnpm verify

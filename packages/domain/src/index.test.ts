@@ -5,6 +5,7 @@ import {
   advanceSimulation,
   createInitialSimulation,
   nextWorkflowStage,
+  recoverIncident,
   triggerFailure,
 } from './index.js';
 
@@ -95,6 +96,31 @@ describe('warehouse domain', () => {
       incidentId: 'INC-001',
     });
     expect(unchanged).toBe(acknowledged);
+  });
+
+  it('applies recovery only after acknowledgement', () => {
+    const failed = triggerFailure(createInitialSimulation(), 'printer_jam');
+    const stillFailed = recoverIncident(failed, 'INC-001');
+    const acknowledged = acknowledgeIncident(failed, 'INC-001');
+    const recovered = recoverIncident(acknowledged, 'INC-001');
+
+    expect(stillFailed).toBe(failed);
+    expect(recovered.incidents[0]).toMatchObject({
+      id: 'INC-001',
+      status: 'resolved',
+      resolvedAtTick: 0,
+    });
+    expect(
+      recovered.devices.find(({ id }) => id === 'PKG-PRN-01'),
+    ).toMatchObject({ status: 'online', lastSeenTick: 0 });
+    expect(recovered.events.slice(0, 2)).toMatchObject([
+      { type: 'incident.resolved', incidentId: 'INC-001' },
+      {
+        type: 'device.status_changed',
+        deviceId: 'PKG-PRN-01',
+        to: 'online',
+      },
+    ]);
   });
 
   it('holds an order when its device is offline', () => {

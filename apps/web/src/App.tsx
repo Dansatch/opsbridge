@@ -22,8 +22,13 @@ const deviceTypeLabels: Record<DeviceType, string> = {
 };
 
 export function App() {
-  const { acknowledgeIncident, connection, simulation, triggerFailure } =
-    useLiveSimulation();
+  const {
+    acknowledgeIncident,
+    connection,
+    recoverIncident,
+    simulation,
+    triggerFailure,
+  } = useLiveSimulation();
   const [selectedOrderId, setSelectedOrderId] = useState('OB-10431');
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>();
   const [troubleOpen, setTroubleOpen] = useState(false);
@@ -49,6 +54,9 @@ export function App() {
   const activeIncident =
     activeIncidents.find((incident) => incident.status === 'open') ??
     activeIncidents[0];
+  const activeIncidentScenario = activeIncident
+    ? FAILURE_SCENARIOS.find(({ id }) => id === activeIncident.failureId)
+    : undefined;
   const offlineDevices = simulation.devices.filter(
     (device) => device.status === 'offline',
   );
@@ -249,7 +257,7 @@ export function App() {
 
         {activeIncident ? (
           <aside
-            className={`incident-focus severity-${activeIncident.severity}`}
+            className={`incident-focus severity-${activeIncident.severity} is-${activeIncident.status}`}
             aria-live="assertive"
           >
             <div>
@@ -273,26 +281,35 @@ export function App() {
               </strong>
             </div>
             <div className="incident-summary">
-              <span>What OpsBridge found</span>
-              <strong>{activeIncident.summary}</strong>
+              <span>
+                {activeIncident.status === 'acknowledged'
+                  ? 'Suggested recovery'
+                  : 'What OpsBridge found'}
+              </span>
+              <strong>
+                {activeIncident.status === 'acknowledged'
+                  ? activeIncidentScenario?.recoveryInstruction
+                  : activeIncident.summary}
+              </strong>
               <small>
-                Detected{' '}
-                {Math.max(
-                  0,
-                  simulation.clock.tick - activeIncident.openedAtTick,
-                ) *
-                  (SIMULATION_TICK_MS / 1000)}
-                s ago
+                {activeIncident.status === 'acknowledged'
+                  ? 'Apply this action to restore the equipment.'
+                  : `Detected ${Math.max(0, simulation.clock.tick - activeIncident.openedAtTick) * (SIMULATION_TICK_MS / 1000)}s ago`}
               </small>
             </div>
             <button
-              disabled={activeIncident.status !== 'open'}
-              onClick={() => acknowledgeIncident(activeIncident.id)}
+              onClick={() => {
+                if (activeIncident.status === 'open') {
+                  acknowledgeIncident(activeIncident.id);
+                } else {
+                  recoverIncident(activeIncident.id);
+                }
+              }}
               type="button"
             >
               {activeIncident.status === 'open'
                 ? 'Acknowledge incident'
-                : 'Acknowledged · ready for recovery'}
+                : (activeIncidentScenario?.recoveryLabel ?? 'Apply recovery')}
             </button>
           </aside>
         ) : selectedDevice ? (

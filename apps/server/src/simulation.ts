@@ -3,6 +3,7 @@ import {
   acknowledgeIncident,
   advanceSimulation,
   createInitialSimulation,
+  recoverIncident,
   triggerFailure,
   type FailureScenarioId,
   type SimulationState,
@@ -31,6 +32,10 @@ export class SimulationEngine {
 
   acknowledgeIncident(incidentId: string) {
     return this.update((state) => acknowledgeIncident(state, incidentId));
+  }
+
+  recoverIncident(incidentId: string) {
+    return this.update((state) => recoverIncident(state, incidentId));
   }
 
   subscribe(listener: SimulationListener) {

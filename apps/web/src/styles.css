@@ -525,6 +525,10 @@ button {
   font-weight: 750;
   cursor: pointer;
 }
+.incident-focus.is-acknowledged button {
+  border-color: #62ddb1;
+  background: #16775d;
+}
 .incident-focus button:disabled {
   border-color: #45617a;
   color: #9fb0c1;

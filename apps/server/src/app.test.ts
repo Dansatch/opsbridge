@@ -129,6 +129,25 @@ describe('OpsBridge server', () => {
       },
     });
 
+    socket.send(
+      JSON.stringify({
+        type: 'incident.recover',
+        incidentId: 'INC-001',
+      }),
+    );
+    await expect.poll(() => messages.length).toBe(5);
+    expect(JSON.parse(messages[4] ?? '{}')).toMatchObject({
+      type: 'simulation.snapshot',
+      state: {
+        devices: expect.arrayContaining([
+          expect.objectContaining({ id: 'PKG-PRN-01', status: 'online' }),
+        ]),
+        incidents: [
+          expect.objectContaining({ id: 'INC-001', status: 'resolved' }),
+        ],
+      },
+    });
+
     socket.terminate();
   });
 });
