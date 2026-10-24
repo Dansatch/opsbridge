@@ -199,6 +199,10 @@ button {
 .summary p {
   margin: 0 0 0 auto;
 }
+.summary-alert strong,
+.summary-alert span {
+  color: #ff918d;
+}
 
 .floor {
   margin: 28px 32px 20px;
@@ -462,6 +466,72 @@ button {
   line-height: 1.45;
 }
 
+.incident-focus {
+  display: grid;
+  grid-template-columns: 0.7fr 0.65fr 0.8fr 0.7fr minmax(230px, 1.5fr) auto;
+  gap: 20px;
+  align-items: center;
+  margin-top: 46px;
+  padding: 17px 20px;
+  border: 1px solid #a94e53;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #2e1b2b, #151f30);
+  box-shadow: 0 16px 30px #0004;
+}
+.incident-focus.severity-warning {
+  border-color: #a77936;
+  background: linear-gradient(90deg, #30271c, #151f30);
+}
+.incident-focus > div {
+  display: grid;
+  gap: 4px;
+}
+.incident-focus span,
+.incident-focus small {
+  color: #a995a4;
+  font-size: 11px;
+}
+.incident-focus strong {
+  font-size: 13px;
+}
+.incident-focus .focus-label,
+.incident-severity,
+.incident-status {
+  color: #ff918d;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.severity-warning .focus-label,
+.severity-warning .incident-severity,
+.severity-warning .incident-status {
+  color: #f0b84f;
+}
+.incident-summary {
+  min-width: 0;
+}
+.incident-summary strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.incident-focus button {
+  min-width: 174px;
+  padding: 11px 14px;
+  border: 1px solid #ff7772;
+  border-radius: 9px;
+  color: #fff;
+  background: #c74449;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.incident-focus button:disabled {
+  border-color: #45617a;
+  color: #9fb0c1;
+  background: #182a3b;
+  cursor: default;
+}
+
 .activity {
   display: grid;
   grid-template-columns: 1.1fr repeat(3, 1fr);
@@ -539,6 +609,14 @@ button {
   .order-focus {
     grid-template-columns: 1fr 1fr;
     margin-top: 20px;
+  }
+  .incident-focus {
+    grid-template-columns: 1fr 1fr;
+    margin-top: 20px;
+  }
+  .incident-summary,
+  .incident-focus button {
+    grid-column: 1 / -1;
   }
   .order-focus p {
     grid-column: 1 / -1;

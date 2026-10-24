@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   WORKFLOW_STAGES,
+  acknowledgeIncident,
   advanceSimulation,
   createInitialSimulation,
   nextWorkflowStage,
@@ -64,13 +65,36 @@ describe('warehouse domain', () => {
     expect(failed.devices.find(({ id }) => id === 'PKG-PRN-01')?.status).toBe(
       'offline',
     );
-    expect(failed.events[0]).toMatchObject({
+    expect(failed.incidents[0]).toMatchObject({
+      id: 'INC-001',
+      deviceId: 'PKG-PRN-01',
+      severity: 'critical',
+      status: 'open',
+    });
+    expect(failed.events[1]).toMatchObject({
       type: 'device.status_changed',
       deviceId: 'PKG-PRN-01',
       from: 'online',
       to: 'offline',
       message: expect.stringContaining('modern art'),
     });
+  });
+
+  it('acknowledges an open incident once', () => {
+    const failed = triggerFailure(createInitialSimulation(), 'printer_jam');
+    const acknowledged = acknowledgeIncident(failed, 'INC-001');
+    const unchanged = acknowledgeIncident(acknowledged, 'INC-001');
+
+    expect(acknowledged.incidents[0]).toMatchObject({
+      id: 'INC-001',
+      status: 'acknowledged',
+      acknowledgedAtTick: 0,
+    });
+    expect(acknowledged.events[0]).toMatchObject({
+      type: 'incident.acknowledged',
+      incidentId: 'INC-001',
+    });
+    expect(unchanged).toBe(acknowledged);
   });
 
   it('holds an order when its device is offline', () => {

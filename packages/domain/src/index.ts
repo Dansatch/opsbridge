@@ -41,6 +41,7 @@ export const FAILURE_SCENARIOS = [
     label: 'Disconnect dispatch scanner',
     deviceId: 'DSP-SCN-01',
     status: 'offline',
+    severity: 'critical',
     headline: 'Dispatch scanner has gone quiet',
     detail:
       'No scans are reaching Bay 2. That parcel is not going anywhere yet.',
@@ -51,6 +52,7 @@ export const FAILURE_SCENARIOS = [
     label: 'Slow receiving scanner',
     deviceId: 'RCV-SCN-01',
     status: 'degraded',
+    severity: 'warning',
     headline: 'Receiving scans are taking the scenic route',
     detail:
       'Responses are arriving slowly, so some orders will wait at the door.',
@@ -62,6 +64,7 @@ export const FAILURE_SCENARIOS = [
     label: 'Jam packing printer',
     deviceId: 'PKG-PRN-01',
     status: 'offline',
+    severity: 'critical',
     headline: 'The label printer has eaten the paper',
     detail: 'Packing cannot release the next parcel until the printer behaves.',
     eventMessage: 'PKG-PRN-01 jammed. The label is now modern art.',
@@ -71,6 +74,7 @@ export const FAILURE_SCENARIOS = [
     label: 'Fail the next label',
     deviceId: 'PKG-PRN-01',
     status: 'degraded',
+    severity: 'warning',
     headline: 'That label did not make the cut',
     detail:
       'The print failed validation and the parcel is waiting for another try.',
@@ -82,6 +86,7 @@ export const FAILURE_SCENARIOS = [
   label: string;
   deviceId: string;
   status: Exclude<DeviceStatus, 'online'>;
+  severity: IncidentSeverity;
   headline: string;
   detail: string;
   eventMessage: string;
@@ -109,6 +114,7 @@ export type Device = {
 export type Incident = {
   id: string;
   deviceId: string;
+  failureId: FailureScenarioId;
   severity: IncidentSeverity;
   status: IncidentStatus;
   summary: string;
@@ -174,7 +180,8 @@ export type SimulationState = {
 
 export type SimulationClientMessage =
   | { type: 'simulation.subscribe' }
-  | { type: 'simulation.trigger_failure'; failureId: FailureScenarioId };
+  | { type: 'simulation.trigger_failure'; failureId: FailureScenarioId }
+  | { type: 'incident.acknowledge'; incidentId: string };
 
 export type SimulationServerMessage = {
   type: 'simulation.snapshot';
@@ -339,10 +346,10 @@ export function describeEvent(event: OperationalEvent) {
   if (event.type === 'device.activity') return event.message;
   if (event.type === 'device.status_changed') return event.message;
   if (event.type === 'incident.opened') {
-    return `Incident ${event.incidentId} opened for ${event.deviceId}`;
+    return `${event.incidentId} opened for ${event.deviceId}. OpsBridge is on it.`;
   }
   if (event.type === 'incident.acknowledged') {
-    return `Incident ${event.incidentId} acknowledged`;
+    return `${event.incidentId} acknowledged. Sleeves officially rolled up.`;
   }
 
   return `Incident ${event.incidentId} resolved`;
@@ -456,7 +463,7 @@ export function triggerFailure(
   const device = state.devices.find(({ id }) => id === scenario.deviceId);
   if (!device || device.status === scenario.status) return state;
 
-  const event: OperationalEvent = {
+  const statusEvent: OperationalEvent = {
     id: `event-${state.clock.tick}-${device.id}-${scenario.status}-${state.events.length}`,
     tick: state.clock.tick,
     type: 'device.status_changed',
@@ -465,12 +472,71 @@ export function triggerFailure(
     to: scenario.status,
     message: scenario.eventMessage,
   };
+  const existingIncident = state.incidents.find(
+    (incident) =>
+      incident.deviceId === device.id && incident.status !== 'resolved',
+  );
+  const incidentNumber = state.incidents.length + 1;
+  const incident: Incident | undefined = existingIncident
+    ? undefined
+    : {
+        id: `INC-${String(incidentNumber).padStart(3, '0')}`,
+        deviceId: device.id,
+        failureId,
+        severity: scenario.severity,
+        status: 'open',
+        summary: scenario.headline,
+        openedAtTick: state.clock.tick,
+      };
+  const incidentEvent: OperationalEvent | undefined = incident
+    ? {
+        id: `event-${state.clock.tick}-${incident.id}-opened`,
+        tick: state.clock.tick,
+        type: 'incident.opened',
+        deviceId: device.id,
+        incidentId: incident.id,
+        severity: incident.severity,
+      }
+    : undefined;
 
   return {
     ...state,
     devices: state.devices.map((candidate) =>
       candidate.id === device.id
         ? { ...candidate, status: scenario.status }
+        : candidate,
+    ),
+    incidents: incident ? [incident, ...state.incidents] : state.incidents,
+    events: [incidentEvent, statusEvent, ...state.events]
+      .filter((event): event is OperationalEvent => Boolean(event))
+      .slice(0, 50),
+  };
+}
+
+export function acknowledgeIncident(
+  state: SimulationState,
+  incidentId: string,
+): SimulationState {
+  const incident = state.incidents.find(({ id }) => id === incidentId);
+  if (!incident || incident.status !== 'open') return state;
+
+  const event: OperationalEvent = {
+    id: `event-${state.clock.tick}-${incident.id}-acknowledged`,
+    tick: state.clock.tick,
+    type: 'incident.acknowledged',
+    deviceId: incident.deviceId,
+    incidentId: incident.id,
+  };
+
+  return {
+    ...state,
+    incidents: state.incidents.map((candidate) =>
+      candidate.id === incident.id
+        ? {
+            ...candidate,
+            status: 'acknowledged',
+            acknowledgedAtTick: state.clock.tick,
+          }
         : candidate,
     ),
     events: [event, ...state.events].slice(0, 50),

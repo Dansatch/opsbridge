@@ -105,5 +105,15 @@ export function useLiveSimulation() {
     return true;
   };
 
-  return { connection, simulation, triggerFailure };
+  const acknowledgeIncident = (incidentId: string) => {
+    if (socket?.readyState !== WebSocket.OPEN) return false;
+    const message: SimulationClientMessage = {
+      type: 'incident.acknowledge',
+      incidentId,
+    };
+    socket.send(JSON.stringify(message));
+    return true;
+  };
+
+  return { acknowledgeIncident, connection, simulation, triggerFailure };
 }

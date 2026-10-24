@@ -38,6 +38,10 @@ The failure drill can disconnect or slow a scanner, jam the packing printer or
 fail a label check. The affected device and station react immediately, blocked
 orders stay put, and the event is shared with every connected control-room view.
 
+OpsBridge now detects each injected fault automatically, assigns warning or
+critical priority and opens a focused incident in the control room. Visitors can
+acknowledge it without losing sight of the affected equipment or warehouse flow.
+
 ```sh
 pnpm install
 pnpm verify

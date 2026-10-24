@@ -1,5 +1,6 @@
 import {
   SIMULATION_TICK_MS,
+  acknowledgeIncident,
   advanceSimulation,
   createInitialSimulation,
   triggerFailure,
@@ -26,6 +27,10 @@ export class SimulationEngine {
 
   triggerFailure(failureId: FailureScenarioId) {
     return this.update((state) => triggerFailure(state, failureId));
+  }
+
+  acknowledgeIncident(incidentId: string) {
+    return this.update((state) => acknowledgeIncident(state, incidentId));
   }
 
   subscribe(listener: SimulationListener) {

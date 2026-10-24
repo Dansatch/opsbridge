@@ -24,7 +24,10 @@ function isSubscribeMessage(value: unknown): value is SimulationClientMessage {
     (value.type === 'simulation.subscribe' ||
       (value.type === 'simulation.trigger_failure' &&
         'failureId' in value &&
-        typeof value.failureId === 'string'))
+        typeof value.failureId === 'string') ||
+      (value.type === 'incident.acknowledge' &&
+        'incidentId' in value &&
+        typeof value.incidentId === 'string'))
   );
 }
 
@@ -111,8 +114,10 @@ export function buildApp(options: AppOptions = {}) {
           if (message.type === 'simulation.subscribe') {
             subscribed = true;
             sendSnapshot();
-          } else {
+          } else if (message.type === 'simulation.trigger_failure') {
             simulation.triggerFailure(message.failureId);
+          } else {
+            simulation.acknowledgeIncident(message.incidentId);
           }
         } catch {
           socket.close(1003, 'Expected a JSON message');

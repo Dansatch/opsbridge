@@ -22,7 +22,8 @@ const deviceTypeLabels: Record<DeviceType, string> = {
 };
 
 export function App() {
-  const { connection, simulation, triggerFailure } = useLiveSimulation();
+  const { acknowledgeIncident, connection, simulation, triggerFailure } =
+    useLiveSimulation();
   const [selectedOrderId, setSelectedOrderId] = useState('OB-10431');
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>();
   const [troubleOpen, setTroubleOpen] = useState(false);
@@ -42,6 +43,12 @@ export function App() {
   const selectedDeviceEvents = selectedDevice
     ? simulation.events.filter((event) => event.deviceId === selectedDevice.id)
     : [];
+  const activeIncidents = simulation.incidents.filter(
+    (incident) => incident.status !== 'resolved',
+  );
+  const activeIncident =
+    activeIncidents.find((incident) => incident.status === 'open') ??
+    activeIncidents[0];
   const offlineDevices = simulation.devices.filter(
     (device) => device.status === 'offline',
   );
@@ -96,10 +103,13 @@ export function App() {
                 ({ id }) => id === scenario.deviceId,
               );
               const active = device?.status === scenario.status;
+              const deviceIncident = activeIncidents.find(
+                (incident) => incident.deviceId === scenario.deviceId,
+              );
 
               return (
                 <button
-                  disabled={active || connection !== 'live'}
+                  disabled={Boolean(deviceIncident) || connection !== 'live'}
                   key={scenario.id}
                   onClick={() => {
                     if (!triggerFailure(scenario.id)) return;
@@ -108,7 +118,13 @@ export function App() {
                   }}
                   type="button"
                 >
-                  <span>{active ? 'Already happening' : scenario.label}</span>
+                  <span>
+                    {deviceIncident
+                      ? 'Incident already open'
+                      : active
+                        ? 'Already happening'
+                        : scenario.label}
+                  </span>
                   <small>{scenario.detail}</small>
                 </button>
               );
@@ -131,6 +147,10 @@ export function App() {
         <div>
           <strong>{simulation.orders.length}</strong>
           <span>orders moving</span>
+        </div>
+        <div className={activeIncidents.length ? 'summary-alert' : ''}>
+          <strong>{activeIncidents.length}</strong>
+          <span>active incidents</span>
         </div>
         <p>{operationMessage}</p>
       </section>
@@ -227,7 +247,55 @@ export function App() {
           })}
         </div>
 
-        {selectedDevice ? (
+        {activeIncident ? (
+          <aside
+            className={`incident-focus severity-${activeIncident.severity}`}
+            aria-live="assertive"
+          >
+            <div>
+              <span className="focus-label">Incident detected</span>
+              <strong>{activeIncident.id}</strong>
+            </div>
+            <div>
+              <span>Priority</span>
+              <strong className="incident-severity">
+                {activeIncident.severity}
+              </strong>
+            </div>
+            <div>
+              <span>Equipment</span>
+              <strong>{activeIncident.deviceId}</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong className="incident-status">
+                {activeIncident.status}
+              </strong>
+            </div>
+            <div className="incident-summary">
+              <span>What OpsBridge found</span>
+              <strong>{activeIncident.summary}</strong>
+              <small>
+                Detected{' '}
+                {Math.max(
+                  0,
+                  simulation.clock.tick - activeIncident.openedAtTick,
+                ) *
+                  (SIMULATION_TICK_MS / 1000)}
+                s ago
+              </small>
+            </div>
+            <button
+              disabled={activeIncident.status !== 'open'}
+              onClick={() => acknowledgeIncident(activeIncident.id)}
+              type="button"
+            >
+              {activeIncident.status === 'open'
+                ? 'Acknowledge incident'
+                : 'Acknowledged · ready for recovery'}
+            </button>
+          </aside>
+        ) : selectedDevice ? (
           <aside className="order-focus device-focus" aria-live="polite">
             <div>
               <span className="focus-label">Inspecting</span>

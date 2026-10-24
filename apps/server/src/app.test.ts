@@ -103,12 +103,29 @@ describe('OpsBridge server', () => {
         devices: expect.arrayContaining([
           expect.objectContaining({ id: 'PKG-PRN-01', status: 'offline' }),
         ]),
+        incidents: [expect.objectContaining({ id: 'INC-001', status: 'open' })],
         events: expect.arrayContaining([
           expect.objectContaining({
             type: 'device.status_changed',
             deviceId: 'PKG-PRN-01',
           }),
         ]),
+      },
+    });
+
+    socket.send(
+      JSON.stringify({
+        type: 'incident.acknowledge',
+        incidentId: 'INC-001',
+      }),
+    );
+    await expect.poll(() => messages.length).toBe(4);
+    expect(JSON.parse(messages[3] ?? '{}')).toMatchObject({
+      type: 'simulation.snapshot',
+      state: {
+        incidents: [
+          expect.objectContaining({ id: 'INC-001', status: 'acknowledged' }),
+        ],
       },
     });
 
