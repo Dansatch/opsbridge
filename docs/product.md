@@ -22,7 +22,7 @@ Watch a live operation, disturb it, understand what changed and restore the flow
 - The warehouse floor remains the main attraction.
 - Useful information appears in context rather than filling the screen permanently.
 - Copy is clear, conversational and lightly playful without hiding operational facts.
-- Day and night shifts change atmosphere and order volume.
+- Day and night shifts change atmosphere and control-room voice without resetting work.
 - Motion explains state; it does not decorate empty space.
 - Every metric comes from the same events that drive the simulation.
 - All devices, orders and activity are synthetic and original.
@@ -30,6 +30,6 @@ Watch a live operation, disturb it, understand what changed and restore the flow
 ## Launch boundaries
 
 The first release has one facility, four workflow stages, one connected route,
-three failure scenarios and one contextual detail panel. It does not include user
+four failure scenarios and one contextual detail panel. It does not include user
 accounts, multiple sites, configurable floor plans, predictive maintenance or a
 general-purpose dashboard builder.

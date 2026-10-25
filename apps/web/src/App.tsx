@@ -412,6 +412,19 @@ export function App() {
           </p>
         ))}
       </footer>
+
+      <div className="project-note">
+        <p>
+          Original synthetic demo · No customer data or proprietary workflows
+        </p>
+        <a
+          href="https://github.com/Dansatch/opsbridge"
+          rel="noreferrer"
+          target="_blank"
+        >
+          View the engineering behind it ↗
+        </a>
+      </div>
     </main>
   );
 }

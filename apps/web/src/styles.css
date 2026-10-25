@@ -587,6 +587,25 @@ button {
   background: #55e5a0;
 }
 
+.project-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 32px 24px;
+  color: #718ba5;
+  font-size: 11px;
+}
+.project-note p {
+  margin: 0;
+}
+.project-note a {
+  color: #92b8d8;
+  text-decoration: none;
+}
+.project-note a:hover {
+  color: #7cf0c3;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .parcel {
     transition: none;
@@ -656,6 +675,9 @@ button {
   .activity p {
     display: none;
   }
+  .project-note {
+    padding-inline: 20px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -676,5 +698,8 @@ button {
   }
   .station {
     min-height: 170px;
+  }
+  .project-note {
+    display: grid;
   }
 }

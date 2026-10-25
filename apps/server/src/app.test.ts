@@ -17,6 +17,11 @@ describe('OpsBridge server', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ service: 'opsbridge', status: 'ready' });
+    expect(response.headers).toMatchObject({
+      'referrer-policy': 'no-referrer',
+      'x-content-type-options': 'nosniff',
+      'x-frame-options': 'DENY',
+    });
   });
 
   it('serves the current simulation as an HTTP snapshot', async () => {

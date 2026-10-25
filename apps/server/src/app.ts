@@ -39,6 +39,18 @@ function isSubscribeMessage(value: unknown): value is SimulationClientMessage {
 
 export function buildApp(options: AppOptions = {}) {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
+
+  app.addHook('onSend', async (_request, reply) => {
+    void reply
+      .header(
+        'Content-Security-Policy',
+        "default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'",
+      )
+      .header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+      .header('Referrer-Policy', 'no-referrer')
+      .header('X-Content-Type-Options', 'nosniff')
+      .header('X-Frame-Options', 'DENY');
+  });
   const simulation = options.simulation ?? new SimulationEngine();
   const eventStore =
     options.eventStore ??
