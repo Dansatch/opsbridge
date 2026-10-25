@@ -484,6 +484,7 @@ h1 {
   padding-top: 14px;
 }
 .parcel-preview {
+  flex-shrink: 0;
   width: 62px;
   height: 53px;
   position: relative;
@@ -514,7 +515,7 @@ h1 {
   display: flex;
   gap: 13px;
   position: relative;
-  min-height: 53px;
+  min-height: 46px;
   color: #7e94aa;
 }
 .journey li:not(:last-child)::before {
