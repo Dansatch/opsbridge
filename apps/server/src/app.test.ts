@@ -164,4 +164,55 @@ describe('OpsBridge server', () => {
 
     socket.terminate();
   });
+
+  it('ignores malformed live commands and keeps the connection usable', async () => {
+    const simulation = new SimulationEngine();
+    const app = buildApp({ simulation, startSimulation: false });
+    apps.push(app);
+    await app.ready();
+
+    const socket = await app.injectWS('/api/live');
+    const messages: string[] = [];
+    socket.on('message', (data) => messages.push(data.toString()));
+
+    socket.send(JSON.stringify({ type: 'simulation.subscribe' }));
+    await expect.poll(() => messages.length).toBe(1);
+
+    socket.send(JSON.stringify({ type: 'simulation.change_shift', shift: 7 }));
+    socket.send(JSON.stringify({ type: 'simulation.not_a_command' }));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(messages).toHaveLength(1);
+
+    socket.send(
+      JSON.stringify({ type: 'simulation.change_shift', shift: 'night' }),
+    );
+    await expect.poll(() => messages.length).toBe(2);
+    expect(JSON.parse(messages[1] ?? '{}')).toMatchObject({
+      state: { shift: 'night' },
+    });
+
+    socket.terminate();
+  });
+
+  it('bounds event history requests and keeps API routes explicit', async () => {
+    const simulation = new SimulationEngine();
+    const app = buildApp({ simulation, startSimulation: false });
+    apps.push(app);
+
+    for (let tick = 0; tick < 60; tick += 1) simulation.advance();
+
+    const minimum = await app.inject({
+      method: 'GET',
+      url: '/api/events?limit=0',
+    });
+    const maximum = await app.inject({
+      method: 'GET',
+      url: '/api/events?limit=1000',
+    });
+    const missing = await app.inject({ method: 'GET', url: '/api/nope' });
+
+    expect(minimum.json().events).toHaveLength(1);
+    expect(maximum.json().events).toHaveLength(100);
+    expect(missing.statusCode).toBe(404);
+  });
 });

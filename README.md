@@ -1,5 +1,7 @@
 # OpsBridge
 
+[![Verify OpsBridge](https://github.com/Dansatch/opsbridge/actions/workflows/verify.yml/badge.svg)](https://github.com/Dansatch/opsbridge/actions/workflows/verify.yml)
+
 OpsBridge is a live warehouse operations simulator built to demonstrate how I
 approach real-time operational systems. Orders move through receiving, picking,
 packing and dispatch while simulated scanners, cameras, handhelds and printers
@@ -49,6 +51,12 @@ orders to continue through the warehouse.
 The day and night controls now perform a live operational handover rather than a
 local theme change. The server preserves orders and incidents, broadcasts the new
 shift to every control-room view and records the handover in recent activity.
+
+The reliability suite now runs the operation for hundreds of ticks, exercises
+every failure and recovery drill, checks that unaffected work keeps moving, tests
+malformed WebSocket commands and verifies SQLite history limits. GitHub Actions
+runs formatting, linting, type checks, all tests and the production build on every
+push and pull request.
 
 ```sh
 pnpm install

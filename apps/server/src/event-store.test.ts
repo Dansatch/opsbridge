@@ -40,4 +40,23 @@ describe('OperationalEventStore', () => {
     ]);
     reopenedStore.close();
   });
+
+  it('returns newest events first and enforces safe history limits', () => {
+    const store = new OperationalEventStore();
+
+    for (let tick = 0; tick < 120; tick += 1) {
+      store.record({
+        id: `event-load-${tick}`,
+        tick,
+        type: 'device.activity',
+        deviceId: 'OPS-LOAD-01',
+        message: `Load check ${tick}`,
+      });
+    }
+
+    expect(store.recent(0)).toHaveLength(1);
+    expect(store.recent(500)).toHaveLength(100);
+    expect(store.recent(3).map(({ tick }) => tick)).toEqual([119, 118, 117]);
+    store.close();
+  });
 });
