@@ -8,10 +8,11 @@ import {
 } from '@opsbridge/domain';
 import { useMemo, useState, type CSSProperties } from 'react';
 import { useLiveSimulation } from './useLiveSimulation';
+import { Warehouse } from './Warehouse';
 
-function activityTime(index: number) {
-  if (index === 0) return 'now';
-  return `−${Math.round((SIMULATION_TICK_MS * index) / 1000)}s`;
+function activityTime(ticks: number) {
+  if (ticks === 0) return 'now';
+  return `${Math.round((SIMULATION_TICK_MS * ticks) / 1000)}s ago`;
 }
 
 const deviceTypeLabels: Record<DeviceType, string> = {
@@ -172,7 +173,7 @@ export function App() {
       <section className="summary" aria-label="Operational summary">
         <div>
           <strong>{simulation.throughput.dispatchedOrders}</strong>
-          <span>orders/hour</span>
+          <span>orders dispatched</span>
         </div>
         <div>
           <strong>
@@ -182,7 +183,7 @@ export function App() {
         </div>
         <div>
           <strong>{simulation.orders.length}</strong>
-          <span>orders moving</span>
+          <span>orders on floor</span>
         </div>
         <div className={activeIncidents.length ? 'summary-alert' : ''}>
           <strong>{activeIncidents.length}</strong>
@@ -198,13 +199,13 @@ export function App() {
             <h1 id="floor-title">{shiftCopy[simulation.shift].headline}</h1>
           </div>
           <p>
-            <span className="floor-status-dot" /> Server tick{' '}
-            {simulation.clock.tick}
+            Pick a parcel. Meet its journey.
+            <span className="mobile-hint"> Swipe the floor to explore →</span>
           </p>
         </div>
 
         <div className="route" aria-label="Warehouse workflow">
-          <div className="conveyor" aria-hidden="true" />
+          <Warehouse />
           {simulation.orders.map((order, orderIndex) => {
             const stage = WORKFLOW_STAGES.find(({ id }) => id === order.stage);
             const stageIndex = getStageIndex(order.stage);
@@ -254,7 +255,7 @@ export function App() {
 
             return (
               <article
-                className={`station ${activeFailure ? 'has-trouble' : ''}`}
+                className={`station station-${index} ${activeFailure ? 'has-trouble' : ''}`}
                 key={stage.id}
               >
                 <div className="station-index">0{index + 1}</div>
@@ -263,7 +264,7 @@ export function App() {
                   aria-label={`Device ${device?.status ?? 'offline'}`}
                 />
                 <h2>{stage.name}</h2>
-                <p>{activeFailure?.headline ?? stage.note}</p>
+                <p>{activeFailure ? 'Needs a little help' : 'Ready to roll'}</p>
                 <div className="station-devices">
                   {stageDevices.map((stageDevice) => (
                     <button
@@ -271,8 +272,12 @@ export function App() {
                       aria-pressed={selectedDeviceId === stageDevice.id}
                       key={stageDevice.id}
                       onClick={() => setSelectedDeviceId(stageDevice.id)}
+                      className={`equipment equipment-${stageDevice.type}`}
                       type="button"
                     >
+                      <span className="equipment-shape" aria-hidden="true">
+                        <b />
+                      </span>
                       <i className={stageDevice.status} />
                       {stageDevice.id}
                     </button>
@@ -326,6 +331,7 @@ export function App() {
               </small>
             </div>
             <button
+              disabled={connection !== 'live'}
               onClick={() => {
                 if (activeIncident.status === 'open') {
                   acknowledgeIncident(activeIncident.id);
@@ -371,7 +377,16 @@ export function App() {
                   ? describeEvent(selectedDeviceEvents[0])
                   : `${selectedDevice.name} is online and waiting politely.`}
               </strong>
+              {selectedDeviceEvents.slice(1, 3).map((event) => (
+                <small key={event.id}>{describeEvent(event)}</small>
+              ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDeviceId(undefined)}
+            >
+              Back to the parcel →
+            </button>
           </aside>
         ) : selectedOrder ? (
           <aside className="order-focus" aria-live="polite">
@@ -379,6 +394,45 @@ export function App() {
               <span className="focus-label">Following</span>
               <strong>{selectedOrder.id}</strong>
             </div>
+            <div
+              className="parcel-preview"
+              style={
+                { '--parcel-colour': selectedOrder.colour } as CSSProperties
+              }
+              aria-hidden="true"
+            >
+              <span>↗</span>
+            </div>
+            <ol className="journey" aria-label="Order journey">
+              {WORKFLOW_STAGES.map((stage, index) => (
+                <li
+                  key={stage.id}
+                  className={
+                    index === getStageIndex(selectedOrder.stage)
+                      ? 'current'
+                      : index < getStageIndex(selectedOrder.stage)
+                        ? 'complete'
+                        : ''
+                  }
+                >
+                  <i>
+                    {index < getStageIndex(selectedOrder.stage)
+                      ? '✓'
+                      : index + 1}
+                  </i>
+                  <div>
+                    <strong>{stage.name}</strong>
+                    <small>
+                      {index === getStageIndex(selectedOrder.stage)
+                        ? 'Here, making progress.'
+                        : index < getStageIndex(selectedOrder.stage)
+                          ? 'All sorted.'
+                          : 'Coming up next.'}
+                    </small>
+                  </div>
+                </li>
+              ))}
+            </ol>
             <div>
               <span>Now at</span>
               <strong>
@@ -406,9 +460,10 @@ export function App() {
         <div>
           <span className="pulse" /> Recent activity
         </div>
-        {simulation.events.slice(0, 3).map((event, index) => (
+        {simulation.events.slice(0, 3).map((event) => (
           <p key={event.id}>
-            <time>{activityTime(index)}</time> {describeEvent(event)}
+            <time>{activityTime(simulation.clock.tick - event.tick)}</time>{' '}
+            {describeEvent(event)}
           </p>
         ))}
       </footer>
